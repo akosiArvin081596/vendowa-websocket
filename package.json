@@ -1,0 +1,19 @@
+{
+  "name": "vendora-websocket-server",
+  "version": "1.0.0",
+  "description": "Real-time WebSocket server for Vendora POS synchronization",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": ["websocket", "socket.io", "pos", "real-time"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.7.2"
+  }
+}

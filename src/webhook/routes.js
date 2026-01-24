@@ -157,7 +157,7 @@ const renderLogsUi = () => `<!doctype html>
           return false;
         }
         if (term) {
-          const haystack = `${log.timestamp} ${log.level} ${log.message}`.toLowerCase();
+          const haystack = [log.timestamp, log.level, log.message].join(' ').toLowerCase();
           return haystack.includes(term);
         }
         return true;
@@ -169,13 +169,13 @@ const renderLogsUi = () => `<!doctype html>
         logList.innerHTML = '<div class="empty">No logs match your filters.</div>';
         return;
       }
-      logList.innerHTML = logs.map((log) => `
-        <div class="log-row" data-level="${log.level}">
-          <div>${escapeHtml(log.timestamp)}</div>
-          <div>${escapeHtml(log.level)}</div>
-          <div>${escapeHtml(log.message)}</div>
-        </div>
-      `).join('');
+      logList.innerHTML = logs.map((log) => {
+        return '<div class="log-row" data-level="' + escapeHtml(log.level) + '">' +
+          '<div>' + escapeHtml(log.timestamp) + '</div>' +
+          '<div>' + escapeHtml(log.level) + '</div>' +
+          '<div>' + escapeHtml(log.message) + '</div>' +
+        '</div>';
+      }).join('');
     };
 
     const fetchLogs = async () => {
@@ -189,7 +189,7 @@ const renderLogsUi = () => `<!doctype html>
         }
         const data = await response.json();
         const filtered = applyFilters(data.logs || []);
-        statusText.textContent = `Showing ${filtered.length} of ${(data.logs || []).length} logs`;
+        statusText.textContent = 'Showing ' + filtered.length + ' of ' + (data.logs || []).length + ' logs';
         renderLogs(filtered);
       } catch (error) {
         statusText.textContent = 'Unable to load logs. Retrying…';

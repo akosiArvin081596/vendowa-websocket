@@ -82,8 +82,9 @@ function setupSocketAuth(io) {
   // Apply authentication middleware
   io.use(authenticateSocket);
 
-  io.on('connection', (socket) => {
-    logger.info(`User ${socket.userId} connected (socket: ${socket.id})`);
+  io.on('connection', async (socket) => {
+    const userType = socket.isGuest ? 'GUEST' : 'USER';
+    logger.info(`[${userType}] ${socket.userId} connected (socket: ${socket.id})`);
 
     // Join user-specific room for targeted messages
     socket.join(`user:${socket.userId}`);
@@ -96,14 +97,31 @@ function setupSocketAuth(io) {
       socket.join(`role:${socket.userRole}`);
     }
 
+    // Log room membership
+    const rooms = Array.from(socket.rooms);
+    logger.info(`[${userType}] ${socket.userId} joined rooms: ${rooms.join(', ')}`);
+
+    // Log current connection stats
+    const allSockets = await io.fetchSockets();
+    const guestCount = allSockets.filter(s => s.isGuest).length;
+    const userCount = allSockets.filter(s => !s.isGuest).length;
+    logger.info(`[STATS] Total connections: ${allSockets.length} (${userCount} users, ${guestCount} guests)`)
+
     // Handle ping for connection health check
     socket.on('ping', () => {
       socket.emit('pong', { timestamp: Date.now() });
     });
 
     // Handle disconnect
-    socket.on('disconnect', (reason) => {
-      logger.info(`User ${socket.userId} disconnected: ${reason}`);
+    socket.on('disconnect', async (reason) => {
+      const userType = socket.isGuest ? 'GUEST' : 'USER';
+      logger.info(`[${userType}] ${socket.userId} disconnected: ${reason}`);
+
+      // Log remaining connections
+      const allSockets = await io.fetchSockets();
+      const guestCount = allSockets.filter(s => s.isGuest).length;
+      const userCount = allSockets.filter(s => !s.isGuest).length;
+      logger.info(`[STATS] Remaining connections: ${allSockets.length} (${userCount} users, ${guestCount} guests)`);
     });
 
     // Handle errors

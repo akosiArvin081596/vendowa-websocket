@@ -64,6 +64,42 @@ function createWebhookRoutes(io) {
   });
 
   /**
+   * Debug endpoint - shows detailed connection info
+   * GET /webhook/debug
+   */
+  router.get('/debug', async (req, res) => {
+    try {
+      const allSockets = await io.fetchSockets();
+      const broadcastRoom = io.sockets.adapter.rooms.get('broadcast');
+
+      const connections = allSockets.map(s => ({
+        id: s.id,
+        userId: s.userId,
+        role: s.userRole,
+        isGuest: s.isGuest,
+        rooms: Array.from(s.rooms),
+      }));
+
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        stats: {
+          total: allSockets.length,
+          guests: allSockets.filter(s => s.isGuest).length,
+          authenticated: allSockets.filter(s => !s.isGuest).length,
+          inBroadcastRoom: broadcastRoom ? broadcastRoom.size : 0,
+        },
+        connections,
+      });
+    } catch (err) {
+      res.status(500).json({
+        status: 'error',
+        error: err.message
+      });
+    }
+  });
+
+  /**
    * Batch events endpoint for multiple events
    * POST /webhook/batch
    */

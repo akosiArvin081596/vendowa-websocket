@@ -32,9 +32,20 @@ async function validateTokenWithLaravel(token) {
 /**
  * Socket.io authentication middleware
  * Validates Sanctum token via Laravel API
+ * Allows guest connections for public events (e.g., product updates)
  */
 async function authenticateSocket(socket, next) {
   const token = socket.handshake.auth.token;
+  const isGuest = socket.handshake.auth.guest === true;
+
+  // Allow guest connections
+  if (!token && isGuest) {
+    socket.userId = `guest_${socket.id}`;
+    socket.userRole = 'guest';
+    socket.isGuest = true;
+    logger.debug(`Guest socket connected: ${socket.id}`);
+    return next();
+  }
 
   if (!token) {
     logger.warn('Socket connection rejected: No token provided');
@@ -54,6 +65,7 @@ async function authenticateSocket(socket, next) {
     socket.userRole = user.role || user.user_type;
     socket.userEmail = user.email;
     socket.userName = user.name;
+    socket.isGuest = false;
 
     logger.debug(`Socket authenticated for user ${socket.userId} (${socket.userEmail})`);
     next();

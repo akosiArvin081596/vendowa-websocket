@@ -224,7 +224,7 @@ const renderLogsUi = () => `<!doctype html>
         return;
       }
       try {
-        const response = await fetch('/webhook/logs');
+        const response = await fetch('../logs');
         if (!response.ok) {
           throw new Error('Failed to load logs');
         }

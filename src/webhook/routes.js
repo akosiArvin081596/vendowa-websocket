@@ -148,7 +148,7 @@ const renderLogsUi = () => `<!doctype html>
     let isPaused = false;
     let intervalId = null;
 
-    const escapeHtml = (value) => value.replace(/[&<>"']/g, (match) => ({
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (match) => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
@@ -233,6 +233,7 @@ const renderLogsUi = () => `<!doctype html>
         statusText.textContent = 'Showing ' + filtered.length + ' of ' + (data.logs || []).length + ' logs';
         renderLogs(filtered);
       } catch (error) {
+        console.error('Failed to load logs:', error);
         statusText.textContent = 'Unable to load logs. Retrying…';
       }
     };

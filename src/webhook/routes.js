@@ -121,12 +121,6 @@ const renderLogsUi = () => `<!doctype html>
           <option value="DEBUG">Debug</option>
         </select>
         <input id="searchInput" type="search" placeholder="Search logs">
-        <select id="refreshInterval">
-          <option value="1000">Refresh 1s</option>
-          <option value="2000" selected>Refresh 2s</option>
-          <option value="5000">Refresh 5s</option>
-          <option value="10000">Refresh 10s</option>
-        </select>
         <button id="pauseBtn" type="button" data-active="false">Pause</button>
         <button id="refreshBtn" type="button">Refresh</button>
       </div>
@@ -136,17 +130,17 @@ const renderLogsUi = () => `<!doctype html>
       <div class="empty">Waiting for logs…</div>
     </div>
   </div>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     const logList = document.getElementById('logList');
     const statusText = document.getElementById('statusText');
     const levelFilter = document.getElementById('levelFilter');
     const searchInput = document.getElementById('searchInput');
-    const refreshInterval = document.getElementById('refreshInterval');
     const pauseBtn = document.getElementById('pauseBtn');
     const refreshBtn = document.getElementById('refreshBtn');
 
     let isPaused = false;
-    let intervalId = null;
+    let allLogs = [];
 
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (match) => ({
       '&': '&amp;',
@@ -222,31 +216,53 @@ const renderLogsUi = () => `<!doctype html>
         rows;
     };
 
-    const fetchLogs = async () => {
+    const updateStatus = (filteredCount, totalCount) => {
       if (isPaused) {
+        statusText.textContent = 'Paused';
         return;
       }
-      try {
-        const response = await fetch('../logs');
-        if (!response.ok) {
-          throw new Error('Failed to load logs');
-        }
-        const data = await response.json();
-        const filtered = applyFilters(data.logs || []);
-        statusText.textContent = 'Showing ' + filtered.length + ' of ' + (data.logs || []).length + ' logs';
-        renderLogs(filtered);
-      } catch (error) {
-        console.error('Failed to load logs:', error);
-        statusText.textContent = 'Unable to load logs. Retrying…';
-      }
+      statusText.textContent = 'Showing ' + filteredCount + ' of ' + totalCount + ' logs';
     };
 
-    const restartPolling = () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      intervalId = setInterval(fetchLogs, Number(refreshInterval.value));
+    const renderFromAll = () => {
+      const filtered = applyFilters(allLogs);
+      updateStatus(filtered.length, allLogs.length);
+      renderLogs(filtered);
     };
+
+    const socket = io({
+      auth: { guest: true },
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('connect', () => {
+      statusText.textContent = 'Connected';
+      socket.emit('logs:subscribe');
+    });
+
+    socket.on('disconnect', () => {
+      statusText.textContent = 'Disconnected. Reconnecting…';
+    });
+
+    socket.on('logs:initial', (payload) => {
+      allLogs = Array.isArray(payload.logs) ? payload.logs : [];
+      if (!isPaused) {
+        renderFromAll();
+      }
+    });
+
+    socket.on('logs:new', (log) => {
+      if (!log) {
+        return;
+      }
+      allLogs.unshift(log);
+      if (allLogs.length > 200) {
+        allLogs.pop();
+      }
+      if (!isPaused) {
+        renderFromAll();
+      }
+    });
 
     pauseBtn.addEventListener('click', () => {
       isPaused = !isPaused;
@@ -254,17 +270,18 @@ const renderLogsUi = () => `<!doctype html>
       pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
       statusText.textContent = isPaused ? 'Paused' : 'Resumed';
       if (!isPaused) {
-        fetchLogs();
+        renderFromAll();
       }
     });
 
-    refreshBtn.addEventListener('click', fetchLogs);
-    refreshInterval.addEventListener('change', restartPolling);
-    levelFilter.addEventListener('change', fetchLogs);
-    searchInput.addEventListener('input', fetchLogs);
-
-    restartPolling();
-    fetchLogs();
+    refreshBtn.addEventListener('click', () => {
+      socket.emit('logs:request');
+      if (!isPaused) {
+        renderFromAll();
+      }
+    });
+    levelFilter.addEventListener('change', renderFromAll);
+    searchInput.addEventListener('input', renderFromAll);
   </script>
 </body>
 </html>`;

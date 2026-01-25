@@ -1,5 +1,6 @@
 const config = require('../config');
 const logger = require('../utils/logger');
+const { getRecentLogs } = require('../utils/log-store');
 
 /**
  * Validate Sanctum token via Laravel API
@@ -142,6 +143,26 @@ function setupSocketAuth(io) {
       const guestCount = allSockets.filter(s => s.isGuest).length;
       const userCount = allSockets.filter(s => !s.isGuest).length;
       logger.info(`[STATS] Remaining connections: ${allSockets.length} (${userCount} users, ${guestCount} guests)`);
+    });
+
+    const sendLogsSnapshot = () => {
+      const logs = getRecentLogs();
+      socket.emit('logs:initial', {
+        status: 'ok',
+        count: logs.length,
+        logs,
+      });
+    };
+
+    socket.on('logs:subscribe', () => {
+      socket.join('logs-ui');
+      sendLogsSnapshot();
+    });
+
+    socket.on('logs:request', sendLogsSnapshot);
+
+    socket.on('logs:unsubscribe', () => {
+      socket.leave('logs-ui');
     });
 
     // Handle errors

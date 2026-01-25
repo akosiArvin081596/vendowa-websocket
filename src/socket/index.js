@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const config = require('../config');
 const { setupSocketAuth } = require('./auth');
 const logger = require('../utils/logger');
+const { onLog } = require('../utils/log-store');
 
 /**
  * Initialize Socket.io server
@@ -24,6 +25,10 @@ function initializeSocketServer(httpServer) {
 
   // Setup authentication and handlers
   setupSocketAuth(io);
+
+  onLog((entry) => {
+    io.to('logs-ui').emit('logs:new', entry);
+  });
 
   logger.info('Socket.io server initialized');
 

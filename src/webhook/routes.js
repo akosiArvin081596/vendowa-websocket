@@ -179,7 +179,10 @@ const renderLogsUi = () => `<!doctype html>
       });
     };
 
-    const formatUser = (context = {}) => {
+    const formatUser = (context) => {
+      if (!context || typeof context !== 'object') {
+        return '—';
+      }
       if (context.userName && context.userEmail) {
         return context.userName + ' <' + context.userEmail + '>';
       }

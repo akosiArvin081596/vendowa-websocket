@@ -74,13 +74,20 @@ const renderLogsUi = () => `<!doctype html>
     }
     .log-row {
       display: grid;
-      grid-template-columns: 180px 80px 1fr;
+      grid-template-columns: 180px 80px 220px 1fr;
       gap: 12px;
       padding: 10px 16px;
       border-bottom: 1px solid #1f2a37;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 13px;
       line-height: 1.4;
+    }
+    .log-header {
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      font-size: 11px;
+      background: #0b1220;
     }
     .log-row:last-child {
       border-bottom: none;
@@ -157,11 +164,35 @@ const renderLogsUi = () => `<!doctype html>
           return false;
         }
         if (term) {
-          const haystack = [log.timestamp, log.level, log.message].join(' ').toLowerCase();
+          const context = log.context || {};
+          const haystack = [
+            log.timestamp,
+            log.level,
+            log.message,
+            context.userName,
+            context.userEmail,
+            context.userId,
+          ].join(' ').toLowerCase();
           return haystack.includes(term);
         }
         return true;
       });
+    };
+
+    const formatUser = (context = {}) => {
+      if (context.userName && context.userEmail) {
+        return context.userName + ' <' + context.userEmail + '>';
+      }
+      if (context.userName) {
+        return context.userName;
+      }
+      if (context.userEmail) {
+        return context.userEmail;
+      }
+      if (context.userId) {
+        return String(context.userId);
+      }
+      return '—';
     };
 
     const renderLogs = (logs) => {
@@ -169,13 +200,23 @@ const renderLogsUi = () => `<!doctype html>
         logList.innerHTML = '<div class="empty">No logs match your filters.</div>';
         return;
       }
-      logList.innerHTML = logs.map((log) => {
+      const rows = logs.map((log) => {
         return '<div class="log-row" data-level="' + escapeHtml(log.level) + '">' +
           '<div>' + escapeHtml(log.timestamp) + '</div>' +
           '<div>' + escapeHtml(log.level) + '</div>' +
+          '<div>' + escapeHtml(formatUser(log.context)) + '</div>' +
           '<div>' + escapeHtml(log.message) + '</div>' +
         '</div>';
       }).join('');
+
+      logList.innerHTML =
+        '<div class="log-row log-header">' +
+          '<div>Timestamp</div>' +
+          '<div>Level</div>' +
+          '<div>User</div>' +
+          '<div>Message</div>' +
+        '</div>' +
+        rows;
     };
 
     const fetchLogs = async () => {

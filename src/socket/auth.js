@@ -84,7 +84,19 @@ function setupSocketAuth(io) {
 
   io.on('connection', async (socket) => {
     const userType = socket.isGuest ? 'GUEST' : 'USER';
-    logger.info(`[${userType}] ${socket.userId} connected (socket: ${socket.id})`);
+    const userContext = {
+      userId: socket.userId,
+      userName: socket.userName,
+      userEmail: socket.userEmail,
+      userRole: socket.userRole,
+      isGuest: socket.isGuest,
+    };
+
+    logger.logWithContext(
+      'INFO',
+      `[${userType}] ${socket.userId} connected (socket: ${socket.id})`,
+      userContext,
+    );
 
     // Join user-specific room for targeted messages
     socket.join(`user:${socket.userId}`);
@@ -99,7 +111,11 @@ function setupSocketAuth(io) {
 
     // Log room membership
     const rooms = Array.from(socket.rooms);
-    logger.info(`[${userType}] ${socket.userId} joined rooms: ${rooms.join(', ')}`);
+    logger.logWithContext(
+      'INFO',
+      `[${userType}] ${socket.userId} joined rooms: ${rooms.join(', ')}`,
+      userContext,
+    );
 
     // Log current connection stats
     const allSockets = await io.fetchSockets();
@@ -115,7 +131,11 @@ function setupSocketAuth(io) {
     // Handle disconnect
     socket.on('disconnect', async (reason) => {
       const userType = socket.isGuest ? 'GUEST' : 'USER';
-      logger.info(`[${userType}] ${socket.userId} disconnected: ${reason}`);
+      logger.logWithContext(
+        'INFO',
+        `[${userType}] ${socket.userId} disconnected: ${reason}`,
+        userContext,
+      );
 
       // Log remaining connections
       const allSockets = await io.fetchSockets();
@@ -126,7 +146,15 @@ function setupSocketAuth(io) {
 
     // Handle errors
     socket.on('error', (error) => {
-      logger.error(`Socket error for user ${socket.userId}:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.logWithContext(
+        'ERROR',
+        `Socket error for user ${socket.userId}: ${errorMessage || 'Unknown error'}`,
+        {
+          ...userContext,
+          error: error instanceof Error ? error.stack || error.message : errorMessage,
+        },
+      );
     });
   });
 }

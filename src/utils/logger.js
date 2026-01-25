@@ -58,6 +58,24 @@ const logger = {
       addLog('DEBUG', formatLogArgs(args));
     }
   },
+  logWithContext: (level, message, context = null) => {
+    if (LOG_LEVELS[level] === undefined || currentLevel < LOG_LEVELS[level]) {
+      return;
+    }
+
+    const label = `[${timestamp()}] ${level}:`;
+    const output = context ? [label, message, context] : [label, message];
+
+    if (level === 'ERROR') {
+      console.error(...output);
+    } else if (level === 'WARN') {
+      console.warn(...output);
+    } else {
+      console.log(...output);
+    }
+
+    addLog(level, String(message), context);
+  },
 };
 
 module.exports = logger;

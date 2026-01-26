@@ -4,6 +4,10 @@ const logger = require('../utils/logger');
  * Event types that can be broadcast
  */
 const SYNC_EVENTS = {
+  // User events
+  USER_LOGIN: 'user:login',
+  USER_LOGOUT: 'user:logout',
+
   // Product events
   PRODUCT_CREATED: 'product:created',
   PRODUCT_UPDATED: 'product:updated',

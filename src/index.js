@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+process.env.TZ = process.env.TZ || 'Asia/Manila';
+
 const express = require('express');
 const { createServer } = require('http');
 const config = require('./config');

@@ -74,8 +74,8 @@ const renderLogsUi = () => `<!doctype html>
     }
     .log-row {
       display: grid;
-      grid-template-columns: 180px 80px 220px 1fr;
-      gap: 12px;
+      grid-template-columns: 160px 64px 90px 200px 1fr;
+      gap: 10px;
       padding: 10px 16px;
       border-bottom: 1px solid #1f2a37;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -96,6 +96,28 @@ const renderLogsUi = () => `<!doctype html>
     .log-row[data-level="WARN"] { background: rgba(245, 158, 11, 0.08); }
     .log-row[data-level="INFO"] { background: rgba(59, 130, 246, 0.08); }
     .log-row[data-level="DEBUG"] { background: rgba(148, 163, 184, 0.06); }
+    .level-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .level-badge[data-level="ERROR"] { background: rgba(239, 68, 68, 0.25); color: #f87171; }
+    .level-badge[data-level="WARN"]  { background: rgba(245, 158, 11, 0.25); color: #fbbf24; }
+    .level-badge[data-level="INFO"]  { background: rgba(59, 130, 246, 0.25); color: #60a5fa; }
+    .level-badge[data-level="DEBUG"] { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .event-tag {
+      color: #a78bfa;
+      font-weight: 600;
+    }
+    .actor-col {
+      color: #67e8f9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .empty {
       padding: 24px;
       text-align: center;
@@ -123,6 +145,7 @@ const renderLogsUi = () => `<!doctype html>
         <input id="searchInput" type="search" placeholder="Search logs">
         <button id="pauseBtn" type="button" data-active="false">Pause</button>
         <button id="refreshBtn" type="button">Refresh</button>
+        <button id="clearBtn" type="button">Clear</button>
       </div>
     </header>
     <div class="status" id="statusText">Connecting…</div>
@@ -138,6 +161,7 @@ const renderLogsUi = () => `<!doctype html>
     const searchInput = document.getElementById('searchInput');
     const pauseBtn = document.getElementById('pauseBtn');
     const refreshBtn = document.getElementById('refreshBtn');
+    const clearBtn = document.getElementById('clearBtn');
 
     let isPaused = false;
     let allLogs = [];
@@ -163,9 +187,9 @@ const renderLogsUi = () => `<!doctype html>
             log.timestamp,
             log.level,
             log.message,
-            context.userName,
-            context.userEmail,
-            context.userId,
+            context.userName, context.name,
+            context.userEmail, context.email,
+            context.userId, context.role, context.userRole,
           ].join(' ').toLowerCase();
           return haystack.includes(term);
         }
@@ -173,21 +197,33 @@ const renderLogsUi = () => `<!doctype html>
       });
     };
 
-    const formatUser = (context) => {
+    /** Extract [TAG] prefix from message */
+    const parseTag = (message) => {
+      const match = (message || '').match(/^\\[([A-Z_]+)\\]\\s*/);
+      if (match) {
+        return { tag: match[1], details: message.slice(match[0].length) };
+      }
+      return { tag: '—', details: message || '' };
+    };
+
+    /** Resolve actor from context (handles both socket & webhook naming) */
+    const formatActor = (context) => {
       if (!context || typeof context !== 'object') {
         return '—';
       }
-      if (context.userName && context.userEmail) {
-        return context.userName + ' <' + context.userEmail + '>';
+      const name = context.userName || context.name;
+      const email = context.userEmail || context.email;
+      if (name && email) {
+        return name + ' (' + email + ')';
       }
-      if (context.userName) {
-        return context.userName;
+      if (name) {
+        return name;
       }
-      if (context.userEmail) {
-        return context.userEmail;
+      if (email) {
+        return email;
       }
       if (context.userId) {
-        return String(context.userId);
+        return 'User #' + context.userId;
       }
       return '—';
     };
@@ -216,20 +252,24 @@ const renderLogsUi = () => `<!doctype html>
       }
       const rows = logs.map((log) => {
         const formattedTimestamp = formatTimestamp(log.timestamp);
+        const { tag, details } = parseTag(log.message);
+        const actor = formatActor(log.context);
         return '<div class="log-row" data-level="' + escapeHtml(log.level) + '">' +
           '<div title="' + escapeHtml(log.timestamp) + '">' + escapeHtml(formattedTimestamp) + '</div>' +
-          '<div>' + escapeHtml(log.level) + '</div>' +
-          '<div>' + escapeHtml(formatUser(log.context)) + '</div>' +
-          '<div>' + escapeHtml(log.message) + '</div>' +
+          '<div><span class="level-badge" data-level="' + escapeHtml(log.level) + '">' + escapeHtml(log.level) + '</span></div>' +
+          '<div class="event-tag">' + escapeHtml(tag) + '</div>' +
+          '<div class="actor-col" title="' + escapeHtml(actor) + '">' + escapeHtml(actor) + '</div>' +
+          '<div>' + escapeHtml(details) + '</div>' +
         '</div>';
       }).join('');
 
       logList.innerHTML =
         '<div class="log-row log-header">' +
-          '<div>Timestamp</div>' +
+          '<div>Time</div>' +
           '<div>Level</div>' +
-          '<div>User</div>' +
-          '<div>Message</div>' +
+          '<div>Event</div>' +
+          '<div>Actor</div>' +
+          '<div>Details</div>' +
         '</div>' +
         rows;
     };
@@ -298,6 +338,12 @@ const renderLogsUi = () => `<!doctype html>
         renderFromAll();
       }
     });
+
+    clearBtn.addEventListener('click', () => {
+      allLogs = [];
+      renderFromAll();
+    });
+
     levelFilter.addEventListener('change', renderFromAll);
     searchInput.addEventListener('input', renderFromAll);
   </script>
@@ -326,8 +372,6 @@ function createWebhookRoutes(io) {
 
     try {
       const result = handleWebhookEvent(io, event, data || {});
-
-      logger.info(`Webhook processed: ${event}`);
 
       res.json({
         success: true,

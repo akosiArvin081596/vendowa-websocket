@@ -32,16 +32,8 @@ async function broadcastEvent(io, event, data) {
   const broadcastRoom = io.sockets.adapter.rooms.get('broadcast');
   const clientCount = broadcastRoom ? broadcastRoom.size : 0;
 
-  logger.info(`[BROADCAST] Event: ${event} -> ${clientCount} clients in 'broadcast' room`);
-  logger.debug('Event data:', JSON.stringify(data).substring(0, 200));
-
-  // Log individual socket IDs in broadcast room (for debugging)
-  if (broadcastRoom && broadcastRoom.size > 0) {
-    const socketIds = Array.from(broadcastRoom);
-    logger.debug(`[BROADCAST] Socket IDs: ${socketIds.join(', ')}`);
-  } else {
-    logger.warn(`[BROADCAST] No clients in 'broadcast' room!`);
-  }
+  // Console-only debug for broadcast internals
+  console.log(`[BROADCAST] ${event} -> ${clientCount} clients`);
 
   io.to('broadcast').emit(event, data);
 }

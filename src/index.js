@@ -15,7 +15,7 @@ if (!config.webhookSecret) {
   process.exit(1);
 }
 
-logger.info(`Laravel API URL: ${config.laravelApiUrl}`);
+console.log(`[INFO] Laravel API URL: ${config.laravelApiUrl}`);
 
 // Create Express app and HTTP server
 const app = express();
@@ -70,9 +70,9 @@ app.use((err, req, res, next) => {
 
 // Start server
 httpServer.listen(config.port, () => {
-  logger.info(`Vendora WebSocket Server running on port ${config.port}`);
-  logger.info(`WebSocket endpoint: ws://localhost:${config.port}`);
-  logger.info(`Webhook endpoint: http://localhost:${config.port}/webhook/events`);
+  console.log(`[INFO] Vendora WebSocket Server running on port ${config.port}`);
+  console.log(`[INFO] WebSocket endpoint: ws://localhost:${config.port}`);
+  console.log(`[INFO] Webhook endpoint: http://localhost:${config.port}/webhook/events`);
 });
 
 // Graceful shutdown

@@ -30,7 +30,7 @@ function initializeSocketServer(httpServer) {
     io.to('logs-ui').emit('logs:new', entry);
   });
 
-  logger.info('Socket.io server initialized');
+  console.log('[INFO] Socket.io server initialized');
 
   return io;
 }

@@ -32,13 +32,10 @@ function verifySignature(req, res, next) {
     .update(payload)
     .digest('hex');
 
-  // Debug logging
-  logger.debug('Webhook signature debug:', {
-    receivedSignature: signature,
-    expectedSignature: expectedSignature,
+  // Debug logging (console only — not shown in logs UI)
+  console.log('[DEBUG] Webhook signature check:', {
     payloadLength: payload.length,
     hasRawBody: !!req.rawBody,
-    secret: config.webhookSecret ? config.webhookSecret.substring(0, 3) + '...' : 'NOT SET'
   });
 
   // Compare signatures (timing-safe)
@@ -57,7 +54,7 @@ function verifySignature(req, res, next) {
     });
   }
 
-  logger.debug('Webhook signature verified');
+  // Silent — signature OK
   next();
 }
 

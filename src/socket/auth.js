@@ -44,7 +44,7 @@ async function authenticateSocket(socket, next) {
     socket.userId = `guest_${socket.id}`;
     socket.userRole = 'guest';
     socket.isGuest = true;
-    logger.debug(`Guest socket connected: ${socket.id}`);
+    // Silent guest connection — no log entry
     return next();
   }
 
@@ -68,7 +68,7 @@ async function authenticateSocket(socket, next) {
     socket.userName = user.name;
     socket.isGuest = false;
 
-    logger.debug(`Socket authenticated for user ${socket.userId} (${socket.userEmail})`);
+    // Auth success — connection log handled in setupSocketAuth
     next();
   } catch (err) {
     logger.warn(`Socket authentication failed: ${err.message}`);
@@ -93,36 +93,21 @@ function setupSocketAuth(io) {
       isGuest: socket.isGuest,
     };
 
-    logger.logWithContext(
-      'INFO',
-      `[${userType}] ${socket.userId} connected (socket: ${socket.id})`,
-      userContext,
-    );
-
-    // Join user-specific room for targeted messages
+    // Join rooms
     socket.join(`user:${socket.userId}`);
-
-    // Join broadcast room for all sync events
     socket.join('broadcast');
-
-    // Join role-based room
     if (socket.userRole) {
       socket.join(`role:${socket.userRole}`);
     }
 
-    // Log room membership
-    const rooms = Array.from(socket.rooms);
-    logger.logWithContext(
-      'INFO',
-      `[${userType}] ${socket.userId} joined rooms: ${rooms.join(', ')}`,
-      userContext,
-    );
-
-    // Log current connection stats
-    const allSockets = await io.fetchSockets();
-    const guestCount = allSockets.filter(s => s.isGuest).length;
-    const userCount = allSockets.filter(s => !s.isGuest).length;
-    logger.info(`[STATS] Total connections: ${allSockets.length} (${userCount} users, ${guestCount} guests)`)
+    // Simple connection log for authenticated users only
+    if (!socket.isGuest) {
+      logger.logWithContext(
+        'INFO',
+        `[CONNECTED] ${socket.userName} (${socket.userEmail}) connected`,
+        userContext,
+      );
+    }
 
     // Handle ping for connection health check
     socket.on('ping', () => {
@@ -131,18 +116,13 @@ function setupSocketAuth(io) {
 
     // Handle disconnect
     socket.on('disconnect', async (reason) => {
-      const userType = socket.isGuest ? 'GUEST' : 'USER';
-      logger.logWithContext(
-        'INFO',
-        `[${userType}] ${socket.userId} disconnected: ${reason}`,
-        userContext,
-      );
-
-      // Log remaining connections
-      const allSockets = await io.fetchSockets();
-      const guestCount = allSockets.filter(s => s.isGuest).length;
-      const userCount = allSockets.filter(s => !s.isGuest).length;
-      logger.info(`[STATS] Remaining connections: ${allSockets.length} (${userCount} users, ${guestCount} guests)`);
+      if (!socket.isGuest) {
+        logger.logWithContext(
+          'INFO',
+          `[DISCONNECTED] ${socket.userName} (${socket.userEmail}) disconnected`,
+          userContext,
+        );
+      }
     });
 
     const sendLogsSnapshot = () => {

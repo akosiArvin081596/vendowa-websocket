@@ -18,7 +18,7 @@ async function validateTokenWithLaravel(token) {
     });
 
     if (!response.ok) {
-      logger.debug(`Laravel API returned ${response.status}`);
+      console.log(`[DEBUG] Laravel API returned ${response.status}`);
       return null;
     }
 
@@ -49,7 +49,7 @@ async function authenticateSocket(socket, next) {
   }
 
   if (!token) {
-    logger.warn('Socket connection rejected: No token provided');
+    console.warn('[WARN] Socket connection rejected: No token provided');
     return next(new Error('Authentication token required'));
   }
 
@@ -57,7 +57,7 @@ async function authenticateSocket(socket, next) {
     const user = await validateTokenWithLaravel(token);
 
     if (!user) {
-      logger.warn('Socket authentication failed: Invalid or expired token');
+      console.warn('[WARN] Socket authentication failed: Invalid or expired token');
       return next(new Error('Invalid or expired token'));
     }
 
@@ -71,7 +71,7 @@ async function authenticateSocket(socket, next) {
     // Auth success — connection log handled in setupSocketAuth
     next();
   } catch (err) {
-    logger.warn(`Socket authentication failed: ${err.message}`);
+    console.warn(`[WARN] Socket authentication failed: ${err.message}`);
     next(new Error('Invalid or expired token'));
   }
 }
